@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinity Bot Host</title>
+    <style>
+        :root { --bg: #000; --card: #0a0a0a; --accent: #0070f3; --text: #fff; --dim: #888; --border: #1f1f1f; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .hero { text-align: center; margin: 60px 0 40px; width: 100%; max-width: 1000px; }
+        .hero h1 { font-size: 56px; margin: 0; font-weight: 800; letter-spacing: -2px; background: linear-gradient(180deg, #fff 0%, #888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { color: var(--dim); font-size: 18px; margin-top: 10px; }
+        .container { width: 100%; max-width: 1000px; display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; transition: 0.3s; }
+        .card:hover { border-color: #333; }
+        .status-pill { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 100px; background: #111; border: 1px solid var(--border); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot-online { background: #0070f3; box-shadow: 0 0 10px #0070f3; }
+        .dot-offline { background: #555; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); background: #000; color: #fff; cursor: pointer; font-size: 14px; font-weight: 600; transition: 0.2s; gap: 8px; }
+        .btn:hover { background: #111; border-color: #444; }
+        .btn-blue { background: #fff; color: #000; border: none; }
+        .btn-blue:hover { background: #ccc; }
+        .upload-zone { border: 2px dashed var(--border); padding: 32px; text-align: center; border-radius: 16px; cursor: pointer; transition: 0.2s; margin: 20px 0; }
+        .upload-zone:hover { border-color: var(--accent); background: #0070f305; }
+        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: #050505; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; }
+        .console { background: #000; color: #fff; padding: 20px; height: 460px; overflow-y: auto; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 13px; line-height: 1.6; border-radius: 12px; border: 1px solid var(--border); }
+        .log-line { margin-bottom: 4px; border-left: 2px solid transparent; padding-left: 10px; }
+        .log-online { border-left-color: var(--accent); color: var(--accent); }
+        .log-ts { color: #444; margin-right: 8px; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <div style="display:flex; justify-content:center; margin-bottom: 20px;">
+            <div id="status-pill" class="status-pill">
+                <div id="status-dot" class="dot dot-offline"></div>
+                <span id="status-text">SYSTEM OFFLINE</span>
+            </div>
+        </div>
+        <h1>Infinity Host</h1>
+        <p>Stateless Bot Hosting Platform</p>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h3 style="margin:0 0 20px 0">Control Center</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:24px;">
+                <button class="btn btn-blue" onclick="api('/start')">Deploy</button>
+                <button class="btn" onclick="api('/stop')">Stop</button>
+            </div>
+            
+            <div class="upload-zone" onclick="document.getElementById('file').click()">
+                <div style="font-size:28px; margin-bottom:8px">✦</div>
+                <div style="font-size:14px; font-weight:500">Drop Bot Files</div>
+                <div style="font-size:12px; color:var(--dim); margin-top:4px">Max 2 files • instant run</div>
+                <form action="/upload" method="post" enctype="multipart/form-data" style="display:none">
+                    <input type="file" name="file" id="file" onchange="this.form.submit()">
+                </form>
+            </div>
+            
+            <div id="files" class="file-list"></div>
+        </div>
+        
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+                <h3 style="margin:0">Live Monitor</h3>
+                <div style="font-size:11px; color:var(--dim); background:#111; padding:4px 8px; border-radius:4px">REAL-TIME</div>
+            </div>
+            <div id="console" class="console"></div>
+        </div>
+    </div>
+
+    <script>
+        async function api(path, body) {
+            await fetch(path, { method: 'POST', headers: body ? {'Content-Type': 'application/json'} : {}, body: body ? JSON.stringify(body) : null });
+            update();
+        }
+        async function update() {
+            try {
+                const res = await fetch('/api/data');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                const dot = document.getElementById('status-dot');
+                const text = document.getElementById('status-text');
+                const isOnline = data.isBotOnline;
+                
+                dot.className = `dot ${isOnline ? 'dot-online' : 'dot-offline'}`;
+                text.innerText = isOnline ? 'BOT ONLINE' : 'SYSTEM OFFLINE';
+
+                document.getElementById('files').innerHTML = (data.files || []).map(f => `
+                    <div class="file-item">
+                        <span style="font-size:13px; font-weight:500">${f}</span>
+                        <div style="display:flex; gap:12px">
+                            <span style="cursor:pointer; color:var(--dim)" onclick="rename('${f}')">✎</span>
+                            <span style="cursor:pointer; color:#ff4d4d" onclick="del('${f}')">✕</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                const con = document.getElementById('console');
+                const atBottom = con.scrollHeight - con.clientHeight <= con.scrollTop + 50;
+                
+                con.innerHTML = (data.logs || []).map(l => {
+                    const isOnline = l.includes('[ONLINE]');
+                    const isSystem = l.includes('[SYSTEM]');
+                    if (!isOnline && !isSystem) return '';
+                    
+                    const match = l.match(/\[(.*?)\] (.*)/);
+                    const ts = match ? match[1] : '';
+                    const content = match ? match[2] : l;
+                    
+                    return `<div class="log-line ${isOnline ? 'log-online' : ''}" style="${isSystem ? 'color: var(--dim);' : ''}">
+                        <span class="log-ts">${ts}</span>
+                        <span>${content}</span>
+                    </div>`;
+                }).join('');
+                
+                if (atBottom) con.scrollTop = con.scrollHeight;
+            } catch (e) {}
+        }
+        function rename(old) { const n = prompt('New name:', old); if(n && n !== old) api('/rename', {oldName:old, newName:n}); }
+        function del(f) { if(confirm('Delete?')) api('/delete', {filename:f}); }
+        setInterval(update, 1000); // Faster refresh (1s)
+        update();
+    </script>
+</body>
+</html>
